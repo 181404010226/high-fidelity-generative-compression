@@ -26,7 +26,6 @@ from torch.utils.tensorboard import SummaryWriter
 from src.model import Model
 from src.helpers import utils, datasets
 from default_config import hific_args, mse_lpips_args, directories, ModelModes, ModelTypes
-
 # go fast boi!!
 torch.backends.cudnn.benchmark = True
 
@@ -80,7 +79,7 @@ def test(args, model, epoch, idx, data, test_data, test_bpp, device, epoch_test_
         
         best_test_loss = utils.log(model, storage, epoch, idx, mean_test_loss, compression_loss.item(), 
                                      best_test_loss, start_time, epoch_start_time, 
-                                     batch_size=data.shape[0], avg_bpp=test_bpp.mean().item(),header='[TEST]', 
+                                     batch_size=data.shape[0], avg_bpp=0,header='[TEST]', 
                                      logger=logger, writer=test_writer)
         
     return best_test_loss, epoch_test_loss
@@ -111,7 +110,7 @@ def train(args, model, train_loader, test_loader, device, logger, optimizers):
         
         model.train()
 
-        for idx, (data, bpp) in enumerate(tqdm(train_loader, desc='Train'), 0):
+        for idx, data in enumerate(tqdm(train_loader, desc='Train'), 0):
 
             data = data.to(device, dtype=torch.float)
             
@@ -155,14 +154,14 @@ def train(args, model, train_loader, test_loader, device, logger, optimizers):
 
                 best_loss = utils.log(model, storage, epoch, idx, mean_epoch_loss, compression_loss.item(),
                                 best_loss, start_time, epoch_start_time, batch_size=data.shape[0],
-                                avg_bpp=bpp.mean().item(), logger=logger, writer=train_writer)
+                                avg_bpp=0, logger=logger, writer=train_writer)
                 try:
-                    test_data, test_bpp = test_loader_iter.next()
+                    test_data = next(test_loader_iter)
                 except StopIteration:
                     test_loader_iter = iter(test_loader)
-                    test_data, test_bpp = test_loader_iter.next()
+                    test_data= next(test_loader_iter)
 
-                best_test_loss, epoch_test_loss = test(args, model, epoch, idx, data, test_data, test_bpp, device, epoch_test_loss, storage_test,
+                best_test_loss, epoch_test_loss = test(args, model, epoch, idx, data, test_data, 0, device, epoch_test_loss, storage_test,
                      best_test_loss, start_time, epoch_start_time, logger, train_writer, test_writer)
 
                 with open(os.path.join(args.storage_save, 'storage_{}_tmp.pkl'.format(args.name)), 'wb') as handle:
@@ -315,24 +314,24 @@ if __name__ == '__main__':
     logger.info('USING GPU ID {}'.format(args.gpu))
     logger.info('USING DATASET: {}'.format(args.dataset))
 
-    test_loader = datasets.get_dataloaders(args.dataset,
-                                root=args.dataset_path,
-                                batch_size=args.batch_size,
-                                logger=logger,
-                                mode='validation',
-                                shuffle=True,
-                                normalize=args.normalize_input_image)
+    test_loader = datasets.get_dataloader(
+        root=args.dataset_path,
+        batch_size=args.batch_size,
+        crop_size=args.crop_size,
+        normalize=args.normalize_input_image,
+        shuffle=True
+    )
 
-    train_loader = datasets.get_dataloaders(args.dataset,
-                                root=args.dataset_path,
-                                batch_size=args.batch_size,
-                                logger=logger,
-                                mode='train',
-                                shuffle=True,
-                                normalize=args.normalize_input_image)
+    train_loader = datasets.get_dataloader(
+        root=args.dataset_path,
+        batch_size=args.batch_size,
+        crop_size=args.crop_size,
+        normalize=args.normalize_input_image,
+        shuffle=True
+    )
 
     args.n_data = len(train_loader.dataset)
-    args.image_dims = train_loader.dataset.image_dims
+    args.image_dims = (3, 256, 256)
     logger.info('Training elements: {}'.format(args.n_data))
     logger.info('Input Dimensions: {}'.format(args.image_dims))
     logger.info('Optimizers: {}'.format(optimizers))
