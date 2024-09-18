@@ -22,7 +22,7 @@ class Datasets(object):
     JETS = 'jetimages'
 
 class DatasetPaths(object):
-    OPENIMAGES = 'data/openimages'
+    OPENIMAGES = '/root/autodl-tmp/AerialImageDataset/train/images_split'
     CITYSCAPES = ''
     JETS = ''
 
