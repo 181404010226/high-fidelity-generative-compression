@@ -13,6 +13,7 @@ __pycache__/
 **/*.hdf
 **/*.pt
 **/*.npy
+*.out
 graphs/
 results/
 imgs/*.pdf
